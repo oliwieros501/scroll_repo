@@ -1,0 +1,90 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract MyToken {
+    string public tokenName = "Oliwieros501";
+    string public tokenSymbol = "oli501";
+    uint8 public tokenDecimals = 12;
+    uint256 public initialSupply = 1000000000000 * (10 ** uint256(tokenDecimals));
+    address public tokenOwner;
+   
+    mapping(address => uint256) balances;
+    mapping(address => mapping(address => uint256)) allowances;
+   
+    event TokenTransfer(address indexed from, address indexed to, uint256 value);
+    event ApprovalGranted(address indexed owner, address indexed spender, uint256 value);
+   
+    constructor() {
+        tokenOwner = msg.sender;
+        balances[tokenOwner] = initialSupply;
+    }
+   
+    modifier onlyTokenOwner() {
+        require(msg.sender == tokenOwner, "Only the token owner can call this function.");
+        _;
+    }
+   
+    function getBalance(address account) public view returns (uint256) {
+        return balances[account];
+    }
+   
+    function sendTokens(address recipient, uint256 amount) public returns (bool) {
+        require(recipient != address(0), "Token: transfer to the zero address");
+        require(amount <= balances[msg.sender], "Token: transfer amount exceeds balance");
+       
+        balances[msg.sender] -= amount;
+        balances[recipient] += amount;
+       
+        emit TokenTransfer(msg.sender, recipient, amount);
+       
+        return true;
+    }
+   
+    function grantApproval(address spender, uint256 amount) public returns (bool) {
+        allowances[msg.sender][spender] = amount;
+       
+        emit ApprovalGranted(msg.sender, spender, amount);
+       
+        return true;
+    }
+   
+    function transferFromAccount(address sender, address recipient, uint256 amount) public returns (bool) {
+        require(recipient != address(0), "Token: transfer to the zero address");
+        require(amount <= balances[sender], "Token: transfer amount exceeds balance");
+        require(amount <= allowances[sender][msg.sender], "Token: transfer amount exceeds allowance");
+       
+        balances[sender] -= amount;
+        balances[recipient] += amount;
+        allowances[sender][msg.sender] -= amount;
+       
+        emit TokenTransfer(sender, recipient, amount);
+       
+        return true;
+    }
+   
+    function checkAllowance(address account, address spender) public view returns (uint256) {
+        return allowances[account][spender];
+    }
+   
+    function destroyTokens(uint256 amount) public returns (bool) {
+        require(amount <= balances[msg.sender], "Token: destroy amount exceeds balance");
+       
+        balances[msg.sender] -= amount;
+        initialSupply -= amount;
+       
+        emit TokenTransfer(msg.sender, address(0), amount);
+       
+        return true;
+    }
+   
+    function createTokens(uint256 amount) public onlyTokenOwner returns (bool) {
+        require(initialSupply + amount <= 2**256 - 1, "Token: total supply exceeds uint256");
+       
+        balances[tokenOwner] += amount;
+        initialSupply += amount;
+       
+        emit TokenTransfer(address(0), tokenOwner, amount);
+       
+        return true;
+    }
+}
